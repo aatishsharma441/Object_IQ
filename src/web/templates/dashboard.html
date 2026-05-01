@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ObjectIQ - Smart Detection Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-eye"></i>
+                    <span>ObjectIQ</span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" onclick="showSection('dashboard')">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item admin-only" onclick="showSection('analytics')">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Analytics</span>
+                </a>
+                <a href="#" class="nav-item" onclick="showSection('alerts')">
+                    <i class="fas fa-bell"></i>
+                    <span>Alerts</span>
+                    <span class="nav-badge" id="nav-alert-badge">0</span>
+                </a>
+                <a href="#" class="nav-item admin-only" onclick="showSection('reports')">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Reports</span>
+                </a>
+                <a href="#" class="nav-item admin-only" onclick="showSection('settings')">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="user-profile" onclick="window.location.href='/profile'">
+                    <div class="user-avatar" id="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-info">
+                        <span class="user-name">{{ user.username }}</span>
+                        <span class="user-role" id="user-role-display">{{ user.role }}</span>
+                    </div>
+                    <i class="fas fa-chevron-right profile-arrow"></i>
+                </div>
+                <a href="/logout" class="logout-btn" title="Logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="menu-toggle" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1 class="page-title">Dashboard</h1>
+                </div>
+                <div class="topbar-right">
+                    <div class="status-indicator">
+                        <span class="status-dot" id="connection-dot"></span>
+                        <span id="connection-status">Connecting...</span>
+                    </div>
+                    <div class="topbar-time" id="current-time"></div>
+                    <div class="detection-status" id="detection-status">
+                        <span class="detection-dot"></span>
+                        <span>Detection Active</span>
+                    </div>
+                    <button class="notification-btn" onclick="toggleNotifications()">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge" id="notification-badge">0</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dashboard Content -->
+            <div class="dashboard-content">
+                <!-- Stats Cards Row -->
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-icon blue">
+                            <i class="fas fa-eye"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-total">0</span>
+                            <span class="stat-label">Total Detections</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="crowd-count">0</span>
+                            <span class="stat-label">People Now</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon orange">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-alerts">0</span>
+                            <span class="stat-label">Alerts Today</span>
+                        </div>
+                    </div>
+                    <div class="stat-card severity-high">
+                        <div class="stat-icon red">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-suspicious">0</span>
+                            <span class="stat-label">Threats Detected</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Severity Levels -->
+                <div class="severity-row">
+                    <div class="severity-card low">
+                        <div class="severity-icon"><i class="fas fa-info-circle"></i></div>
+                        <div class="severity-info">
+                            <span class="severity-count" id="severity-low">0</span>
+                            <span class="severity-label">Low Risk</span>
+                        </div>
+                    </div>
+                    <div class="severity-card medium">
+                        <div class="severity-icon"><i class="fas fa-exclamation-circle"></i></div>
+                        <div class="severity-info">
+                            <span class="severity-count" id="severity-medium">0</span>
+                            <span class="severity-label">Medium Risk</span>
+                        </div>
+                    </div>
+                    <div class="severity-card high">
+                        <div class="severity-icon"><i class="fas fa-skull-crossbones"></i></div>
+                        <div class="severity-info">
+                            <span class="severity-count" id="severity-high">0</span>
+                            <span class="severity-label">High Threat</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Grid -->
+                <div class="main-grid">
+                    <!-- Video Feed Section -->
+                    <div class="video-panel">
+                        <div class="panel-header">
+                            <h2><i class="fas fa-video"></i> Live Feed</h2>
+                            <div class="video-controls admin-only">
+                                <div class="source-selector">
+                                    <button class="source-btn active" data-source="webcam" onclick="switchSource('webcam')">
+                                        <i class="fas fa-webcam"></i> Webcam
+                                    </button>
+                                    <button class="source-btn" data-source="video" onclick="switchSource('video')">
+                                        <i class="fas fa-film"></i> Video
+                                    </button>
+                                    <button class="source-btn" data-source="cctv" onclick="switchSource('cctv')">
+                                        <i class="fas fa-camera"></i> CCTV
+                                    </button>
+                                </div>
+                                <button class="control-btn" onclick="toggleFullscreen()" title="Fullscreen">
+                                    <i class="fas fa-expand"></i>
+                                </button>
+                                <button class="control-btn" onclick="toggleDetection()" id="detection-toggle" title="Toggle Detection">
+                                    <i class="fas fa-pause"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="video-container" id="video-container">
+                            <img id="video-stream" src="/video_feed" alt="Video Stream">
+                            <div class="video-overlay">
+                                <div class="overlay-badge fps">
+                                    <i class="fas fa-tachometer-alt"></i>
+                                    <span id="fps">0</span> FPS
+                                </div>
+                                <div class="overlay-badge crowd">
+                                    <i class="fas fa-users"></i>
+                                    <span id="live-crowd-count">0</span>
+                                </div>
+                                <div class="overlay-badge time" id="overlay-time">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                            </div>
+                            <div class="source-indicator" id="source-indicator">
+                                <i class="fas fa-webcam"></i> Webcam
+                            </div>
+                        </div>
+                        <!-- Video Source Config (Admin Only) -->
+                        <div class="source-config admin-only" id="source-config" style="display: none;">
+                            <div class="config-form" id="video-config" style="display: none;">
+                                <label>Video File:</label>
+                                <input type="file" id="video-file" accept="video/*" onchange="loadVideoFile(this)">
+                            </div>
+                            <div class="config-form" id="cctv-config" style="display: none;">
+                                <label>RTSP URL:</label>
+                                <input type="text" id="rtsp-url" placeholder="rtsp://username:password@ip:port/stream">
+                                <button onclick="connectRTSP()">Connect</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel -->
+                    <div class="right-panel">
+                        <!-- Crowd Chart -->
+                        <div class="panel crowd-chart-panel">
+                            <div class="panel-header">
+                                <h2><i class="fas fa-chart-area"></i> Crowd Trend</h2>
+                                <div class="chart-controls">
+                                    <select id="chart-range" onchange="updateChartRange()">
+                                        <option value="1h">Last Hour</option>
+                                        <option value="6h">6 Hours</option>
+                                        <option value="24h">24 Hours</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="crowdChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Export Section (Admin Only) -->
+                        <div class="panel export-panel admin-only">
+                            <div class="panel-header">
+                                <h2><i class="fas fa-download"></i> Export Data</h2>
+                            </div>
+                            <div class="export-buttons">
+                                <button class="export-btn csv" onclick="exportData('csv')">
+                                    <i class="fas fa-file-csv"></i>
+                                    <span>Export CSV</span>
+                                </button>
+                                <button class="export-btn pdf" onclick="exportData('pdf')">
+                                    <i class="fas fa-file-pdf"></i>
+                                    <span>Export PDF</span>
+                                </button>
+                                <button class="export-btn report" onclick="window.location.href='/report'">
+                                    <i class="fas fa-file-alt"></i>
+                                    <span>Full Report</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Quick Stats -->
+                        <div class="panel quick-stats-panel">
+                            <div class="panel-header">
+                                <h2><i class="fas fa-tachometer-alt"></i> Performance</h2>
+                            </div>
+                            <div class="quick-stats">
+                                <div class="quick-stat">
+                                    <span class="qs-label">Avg Confidence</span>
+                                    <div class="qs-value">
+                                        <span id="stat-avg-conf">0%</span>
+                                        <div class="progress-bar">
+                                            <div class="progress-fill" id="confidence-bar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="quick-stat">
+                                    <span class="qs-label">Detection Rate</span>
+                                    <div class="qs-value">
+                                        <span id="detection-rate">0/min</span>
+                                        <div class="progress-bar">
+                                            <div class="progress-fill green" id="rate-bar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Grid -->
+                <div class="bottom-grid">
+                    <!-- Alerts Panel -->
+                    <div class="panel alerts-panel">
+                        <div class="panel-header">
+                            <h2><i class="fas fa-exclamation-circle"></i> Recent Alerts</h2>
+                            <div class="panel-actions">
+                                <span class="alert-count" id="alert-count">0 alerts</span>
+                                <button class="clear-btn admin-only" onclick="clearAllAlerts()">Clear All</button>
+                            </div>
+                        </div>
+                        <div class="alerts-list" id="alerts-list">
+                            <div class="no-alerts">
+                                <i class="fas fa-check-circle"></i>
+                                <span>No alerts yet</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Suspicious Activity Panel -->
+                    <div class="panel suspicious-panel">
+                        <div class="panel-header">
+                            <h2><i class="fas fa-shield-alt"></i> Threat Detection</h2>
+                            <span class="suspicious-count" id="suspicious-count">0 threats</span>
+                        </div>
+                        <div class="suspicious-list" id="suspicious-list">
+                            <div class="no-alerts">
+                                <i class="fas fa-shield-alt"></i>
+                                <span>No threats detected</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detection Log Panel -->
+                    <div class="panel detection-log-panel">
+                        <div class="panel-header">
+                            <h2><i class="fas fa-history"></i> Detection Log</h2>
+                            <button class="clear-btn admin-only" onclick="clearDetections()">Clear</button>
+                        </div>
+                        <div class="detection-table-container">
+                            <table class="detection-table">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Object</th>
+                                        <th>Confidence</th>
+                                        <th>Severity</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detections-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Analytics Section -->
+        <div class="analytics-section" id="analytics-section" style="display:none;">
+            <div class="analytics-grid">
+                <!-- Object Detection Stats -->
+                <div class="analytics-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-chart-pie"></i> Detection Distribution</h3>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="detection-chart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Threat Analysis -->
+                <div class="analytics-card threat-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-shield-alt"></i> Threat Analysis</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="threat-stats">
+                            <div class="threat-stat">
+                                <span class="threat-count" id="threat-total">0</span>
+                                <span class="threat-label">Total Threats</span>
+                            </div>
+                            <div class="threat-stat high">
+                                <span class="threat-count" id="threat-high">0</span>
+                                <span class="threat-label">High Risk</span>
+                            </div>
+                            <div class="threat-stat medium">
+                                <span class="threat-count" id="threat-medium">0</span>
+                                <span class="threat-label">Medium Risk</span>
+                            </div>
+                            <div class="threat-stat low">
+                                <span class="threat-count" id="threat-low">0</span>
+                                <span class="threat-label">Low Risk</span>
+                            </div>
+                        </div>
+                        <canvas id="threat-chart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Hourly Activity -->
+                <div class="analytics-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-clock"></i> Hourly Activity</h3>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="hourly-chart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Crowd Heatmap -->
+                <div class="analytics-card heatmap-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-fire"></i> Crowd Heatmap</h3>
+                        <div class="card-controls">
+                            <button onclick="refreshHeatmap()" class="refresh-btn"><i class="fas fa-sync-alt"></i></button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="heatmap-container">
+                            <img id="heatmap-image" src="" alt="Heatmap">
+                        </div>
+                        <div class="heatmap-legend">
+                            <span class="legend-item low"><i class="fas fa-square"></i> Low</span>
+                            <span class="legend-item medium"><i class="fas fa-square"></i> Medium</span>
+                            <span class="legend-item high"><i class="fas fa-square"></i> High</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Weekly Trends -->
+                <div class="analytics-card full-width">
+                    <div class="card-header">
+                        <h3><i class="fas fa-chart-line"></i> Weekly Trends</h3>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="weekly-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Alerts Section -->
+        <div class="alerts-section" id="alerts-section" style="display:none;">
+            <div class="alerts-header">
+                <h2><i class="fas fa-bell"></i> Alert Management</h2>
+                <div class="alerts-filters">
+                    <select id="alert-filter-type">
+                        <option value="all">All Types</option>
+                        <option value="threat">Threats</option>
+                        <option value="crowd">Crowd</option>
+                        <option value="object">Objects</option>
+                    </select>
+                    <select id="alert-filter-severity">
+                        <option value="all">All Severity</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                    <input type="date" id="alert-filter-date">
+                </div>
+            </div>
+            <div class="alerts-grid">
+                <div class="alerts-list-panel">
+                    <div class="alerts-list-container" id="alerts-list-container">
+                        <!-- Alerts will be populated here -->
+                    </div>
+                </div>
+                <div class="alert-detail-panel">
+                    <div class="alert-detail-content" id="alert-detail-content">
+                        <div class="no-alert-selected">
+                            <i class="fas fa-hand-pointer"></i>
+                            <p>Select an alert to view details</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Reports Section -->
+        <div class="reports-section" id="reports-section" style="display:none;">
+            <div class="section-header">
+                <h2><i class="fas fa-file-alt"></i> Report Generation</h2>
+                <p>Generate PDF reports and export detection data</p>
+            </div>
+            
+            <div class="reports-grid">
+                <div class="report-card">
+                    <h3><i class="fas fa-calendar-alt"></i> Report Parameters</h3>
+                    <div class="report-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Start Date</label>
+                                <input type="date" id="report-start-date">
+                            </div>
+                            <div class="form-group">
+                                <label>End Date</label>
+                                <input type="date" id="report-end-date">
+                            </div>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="generatePDF()">
+                                <i class="fas fa-file-pdf"></i> Generate PDF
+                            </button>
+                            <button class="btn btn-success" onclick="exportCSV()">
+                                <i class="fas fa-file-csv"></i> Export CSV
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="report-card">
+                    <h3><i class="fas fa-chart-bar"></i> Summary Statistics</h3>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-value" id="report-total">0</div>
+                            <div class="stat-label">Total Detections</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="report-alerts">0</div>
+                            <div class="stat-label">Alerts Today</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="report-suspicious">0</div>
+                            <div class="stat-label">Suspicious</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="report-crowd">0</div>
+                            <div class="stat-label">Max Crowd</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Settings Section -->
+        <div class="settings-section" id="settings-section" style="display:none;">
+            <div class="settings-tabs-header">
+                <nav class="settings-tabs-nav">
+                    <a href="#" class="settings-tab-btn active" onclick="showSettingsTab('detection')">
+                        <i class="fas fa-crosshairs"></i> Detection
+                    </a>
+                    <a href="#" class="settings-tab-btn" onclick="showSettingsTab('notifications')">
+                        <i class="fas fa-envelope"></i> Notifications
+                    </a>
+                    <a href="#" class="settings-tab-btn" onclick="showSettingsTab('camera')">
+                        <i class="fas fa-video"></i> Camera
+                    </a>
+                    <a href="#" class="settings-tab-btn" onclick="showSettingsTab('users')">
+                        <i class="fas fa-users"></i> Users
+                    </a>
+                    <a href="#" class="settings-tab-btn" onclick="showSettingsTab('system')">
+                        <i class="fas fa-cogs"></i> System
+                    </a>
+                </nav>
+            </div>
+            <div class="settings-content">
+                <!-- Detection Settings -->
+                <div class="settings-tab" id="detection-settings">
+                    <h2><i class="fas fa-crosshairs"></i> Detection Settings</h2>
+                    <form id="detection-settings-form">
+                        <div class="setting-group">
+                            <label>Confidence Threshold</label>
+                            <div class="range-input">
+                                <input type="range" id="confidence-threshold" min="0.1" max="1.0" step="0.05" value="0.5">
+                                <span id="confidence-value">50%</span>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <label>Frame Skip Interval</label>
+                            <input type="number" id="frame-skip" value="2" min="1" max="10">
+                        </div>
+                        <div class="setting-group">
+                            <label>Target Objects</label>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" name="target-objects" value="person" checked> Person</label>
+                                <label><input type="checkbox" name="target-objects" value="car" checked> Car</label>
+                                <label><input type="checkbox" name="target-objects" value="dog"> Dog</label>
+                                <label><input type="checkbox" name="target-objects" value="cat"> Cat</label>
+                                <label><input type="checkbox" name="target-objects" value="bicycle"> Bicycle</label>
+                                <label><input type="checkbox" name="target-objects" value="motorcycle"> Motorcycle</label>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <label>Weapon Detection Sensitivity</label>
+                            <div class="range-input">
+                                <input type="range" id="weapon-sensitivity" min="0.5" max="1.0" step="0.05" value="0.75">
+                                <span id="weapon-sensitivity-value">75%</span>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <label>Crowd Alert Threshold</label>
+                            <input type="number" id="crowd-threshold" value="5" min="1" max="50">
+                        </div>
+                        <button type="submit" class="save-settings-btn"><i class="fas fa-save"></i> Save Settings</button>
+                    </form>
+                </div>
+                
+                <!-- Notification Settings -->
+                <div class="settings-tab" id="notifications-settings" style="display:none;">
+                    <h2><i class="fas fa-envelope"></i> Notification Settings</h2>
+                    <form id="notification-settings-form">
+                        <div class="setting-group">
+                            <label>Email Configuration</label>
+                            <div class="form-row">
+                                <input type="text" id="smtp-server" placeholder="SMTP Server (e.g., smtp.gmail.com)">
+                                <input type="number" id="smtp-port" placeholder="Port" value="587">
+                            </div>
+                            <div class="form-row">
+                                <input type="email" id="sender-email" placeholder="Sender Email">
+                                <input type="password" id="sender-password" placeholder="App Password">
+                            </div>
+                            <input type="email" id="recipient-email" placeholder="Recipient Email">
+                        </div>
+                        <div class="setting-group">
+                            <label>Alert Types</label>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" name="alert-types" value="weapon" checked> Weapon Detection</label>
+                                <label><input type="checkbox" name="alert-types" value="suspicious" checked> Suspicious Activity</label>
+                                <label><input type="checkbox" name="alert-types" value="crowd"> Crowd Alerts</label>
+                                <label><input type="checkbox" name="alert-types" value="object"> Object Detection</label>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <label>Notification Schedule</label>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" name="schedule" value="immediate" checked> Immediate Alerts</label>
+                                <label><input type="checkbox" name="schedule" value="daily"> Daily Summary</label>
+                                <label><input type="checkbox" name="schedule" value="weekly"> Weekly Report</label>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <label>Cooldown Period (seconds)</label>
+                            <input type="number" id="alert-cooldown" value="30" min="5" max="300">
+                        </div>
+                        <button type="submit" class="save-settings-btn"><i class="fas fa-save"></i> Save Settings</button>
+                    </form>
+                </div>
+                
+                <!-- Camera Settings -->
+                <div class="settings-tab" id="camera-settings" style="display:none;">
+                    <h2><i class="fas fa-video"></i> Camera Settings</h2>
+                    <form id="camera-settings-form">
+                        <div class="setting-group">
+                            <label>Video Source</label>
+                            <select id="video-source-select">
+                                <option value="webcam">Webcam</option>
+                                <option value="video">Video File</option>
+                                <option value="rtsp">RTSP Stream</option>
+                            </select>
+                        </div>
+                        <div class="setting-group" id="rtsp-settings" style="display:none;">
+                            <label>RTSP URL</label>
+                            <input type="text" id="rtsp-url" placeholder="rtsp://username:password@ip:port/stream">
+                        </div>
+                        <div class="setting-group" id="video-file-settings" style="display:none;">
+                            <label>Upload Video</label>
+                            <input type="file" id="video-file-input" accept="video/*">
+                        </div>
+                        <div class="setting-group">
+                            <label>Resolution</label>
+                            <select id="resolution-select">
+                                <option value="640x480">640x480 (SD)</option>
+                                <option value="1280x720" selected>1280x720 (HD)</option>
+                                <option value="1920x1080">1920x1080 (Full HD)</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label>Frame Rate</label>
+                            <select id="framerate-select">
+                                <option value="15">15 FPS</option>
+                                <option value="30" selected>30 FPS</option>
+                                <option value="60">60 FPS</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label>ROI Configuration</label>
+                            <div class="roi-controls">
+                                <label><input type="checkbox" id="roi-enabled"> Enable ROI</label>
+                                <button type="button" class="roi-draw-btn" onclick="startROIDrawing()">
+                                    <i class="fas fa-draw-polygon"></i> Draw ROI
+                                </button>
+                            </div>
+                        </div>
+                        <button type="submit" class="save-settings-btn"><i class="fas fa-save"></i> Save Settings</button>
+                    </form>
+                </div>
+                
+                <!-- Users Settings -->
+                <div class="settings-tab" id="users-settings" style="display:none;">
+                    <h2><i class="fas fa-users"></i> User Management</h2>
+                    <div class="users-header">
+                        <button class="add-user-btn" onclick="showAddUserModal()">
+                            <i class="fas fa-plus"></i> Add User
+                        </button>
+                    </div>
+                    <div class="users-table-container">
+                        <table class="users-table">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th>Last Login</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                <!-- Users will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- System Settings -->
+                <div class="settings-tab" id="system-settings" style="display:none;">
+                    <h2><i class="fas fa-cogs"></i> System Settings</h2>
+                    <form id="system-settings-form">
+                        <div class="setting-group">
+                            <label>Database</label>
+                            <div class="system-info">
+                                <div class="info-item">
+                                    <span class="info-label">Status:</span>
+                                    <span class="info-value" id="db-status">Connected</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Records:</span>
+                                    <span class="info-value" id="db-records">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <label>Data Retention</label>
+                            <input type="number" id="retention-days" value="30" min="1" max="365">
+                            <span class="setting-hint">Days to keep detection data</span>
+                        </div>
+                        <div class="setting-group">
+                            <label>Storage</label>
+                            <div class="system-info">
+                                <div class="info-item">
+                                    <span class="info-label">Snapshots:</span>
+                                    <span class="info-value" id="snapshot-count">0</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Log Size:</span>
+                                    <span class="info-value" id="log-size">0 MB</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <label>System Actions</label>
+                            <div class="action-buttons">
+                                <button type="button" class="action-btn" onclick="clearOldRecords()">
+                                    <i class="fas fa-trash"></i> Clear Old Records
+                                </button>
+                                <button type="button" class="action-btn" onclick="exportDatabase()">
+                                    <i class="fas fa-download"></i> Export Database
+                                </button>
+                                <button type="button" class="action-btn danger" onclick="restartSystem()">
+                                    <i class="fas fa-redo"></i> Restart System
+                                </button>
+                            </div>
+                        </div>
+                        <button type="submit" class="save-settings-btn"><i class="fas fa-save"></i> Save Settings</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        </main>
+        
+        
+        <!-- Data Export Modal -->
+        <div class="export-modal" id="export-modal">
+            <div class="export-modal-content">
+                <div class="export-modal-header">
+                    <h3><i class="fas fa-file-export"></i> Export Data</h3>
+                    <button onclick="toggleExportModal()" class="close-btn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="export-modal-body">
+                    <div class="export-options">
+                        <div class="export-option">
+                            <input type="radio" name="export-type" value="csv" id="export-csv" checked>
+                            <label for="export-csv">
+                                <i class="fas fa-file-csv"></i>
+                                <span>CSV File</span>
+                            </label>
+                        </div>
+                        <div class="export-option">
+                            <input type="radio" name="export-type" value="pdf" id="export-pdf">
+                            <label for="export-pdf">
+                                <i class="fas fa-file-pdf"></i>
+                                <span>PDF Report</span>
+                            </label>
+                        </div>
+                        <div class="export-option">
+                            <input type="radio" name="export-type" value="email" id="export-email">
+                            <label for="export-email">
+                                <i class="fas fa-envelope"></i>
+                                <span>Send via Email</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="export-date-range">
+                        <label>Start Date:</label>
+                        <input type="date" id="export-start-date">
+                        <label>End Date:</label>
+                        <input type="date" id="export-end-date">
+                    </div>
+                    <div class="export-email-input" id="export-email-input" style="display:none;">
+                        <label>Recipient Email:</label>
+                        <input type="email" id="export-recipient-email" placeholder="Enter email address">
+                    </div>
+                    <button class="export-confirm-btn" onclick="confirmExport()">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Notifications Panel -->
+    <div class="notifications-panel" id="notifications-panel">
+        <div class="notifications-header">
+            <h3><i class="fas fa-bell"></i> Notifications</h3>
+            <button onclick="toggleNotifications()" class="close-btn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="notifications-list" id="notifications-list">
+            <div class="no-notifications">
+                <i class="fas fa-bell-slash"></i>
+                <span>No notifications yet</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // User role from template
+        const USER_ROLE = '{{ user.role }}';
+        const IS_ADMIN = USER_ROLE === 'admin';
+    </script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

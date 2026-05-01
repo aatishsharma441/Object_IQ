@@ -1,0 +1,78 @@
+# Detection Settings
+detection:
+  model: "yolov8n.pt"          
+  confidence_threshold: 0.50   
+  frame_rate: 15              
+  resolution: [640, 480]      
+  use_onnx: false              
+
+
+temporal:
+  consecutive_frames: 3       
+
+
+cooldown:
+  seconds: 60                
+
+# Region of Interest (ROI)
+roi:
+  enabled: false
+  zones:
+    - name: "main_area"
+      coordinates: [100, 100, 500, 400]  # x1, y1, x2, y2
+
+# Multi-Object Thresholds
+object_thresholds:
+  enabled: false
+  min_count: 1
+  max_count: null              
+
+# Notification Settings
+notifications:
+  email:
+    enabled: true
+    smtp_server: "smtp.gmail.com"
+    smtp_port: 587
+    use_tls: true
+    sender_email: "object.iq0403@gmail.com"           # Your project email address
+    sender_password: "ojiindfdsalnmvrm"                # App password (not your regular password)
+    recipient_email: "before01012000@gmail.com"       # Recipient admin email address
+
+# Camera/Input Settings
+camera:
+  source: 0                    # 0 for webcam (default), or RTSP URL, or video file path
+  reconnect_delay: 5           # Seconds to wait before reconnecting
+  buffer_size: 1               # Frame buffer size
+
+# Logging Settings
+logging:
+  level: "INFO"                # DEBUG, INFO, WARNING, ERROR
+  save_snapshots: true
+  snapshot_dir: "data/snapshots"
+  log_dir: "data/logs"
+  max_snapshot_days: 7         # Delete snapshots older than X days
+
+# MongoDB Atlas Database Settings
+database:
+  # MongoDB Atlas Connection String
+  connection_string: "mongodb+srv://objectiq0403_db_user:1YOTXIRHpolw6wnm@cluster0.zgn5qvy.mongodb.net/"      # MonbgoDB connection
+  database_name: "object_detection"
+  
+  # Collection Names
+  collections:
+    detections: "detections"
+    alerts: "alerts"
+  
+  # Connection Options
+  options:
+    retrywrites: true
+    w: "majority"
+    maxPoolSize: 10
+    minPoolSize: 1
+    serverSelectionTimeoutMS: 5000
+  
+  # Data Retention
+  retention_days: 30           # Delete records older than X days
+  
+  cache_enabled: true
+  cache_max_size_mb: 100

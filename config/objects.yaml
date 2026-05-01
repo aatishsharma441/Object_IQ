@@ -1,0 +1,62 @@
+# Target Objects to Detect
+# These are COCO class names supported by YOLOv8
+target_objects:
+  - "person"
+  - "car"
+  - "dog"
+  - "cat"
+  - "bicycle"
+  - "motorcycle"
+  - "bus"
+  - "truck"
+
+# Suspicious Objects - High Priority Alerts
+suspicious_objects:
+  - "gun"
+  - "knife"
+  - "weapon"
+  - "scissors"
+
+# Crowd Detection Settings
+crowd_detection:
+  enabled: true
+  person_class: "person"
+  alert_threshold: 5        # Alert if more than X people
+  high_density_threshold: 10  # High crowd density warning
+
+# Object-Specific Configuration
+# Override global settings for specific objects
+object_config:
+  person:
+    confidence_override: 0.75    # Higher threshold for people
+    cooldown_override: 30        # Shorter cooldown for person detection
+    priority: high               # Alert priority level
+    
+  car:
+    confidence_override: 0.70
+    cooldown_override: 60
+    priority: medium
+    
+  dog:
+    confidence_override: 0.65    # Lower threshold as dogs are harder to detect
+    cooldown_override: 120
+    priority: low
+    
+  cat:
+    confidence_override: 0.65
+    cooldown_override: 120
+    priority: low
+
+# Alert Priority Levels
+priority_levels:
+  high:
+    immediate_notification: true
+    snapshot_required: true
+    
+  medium:
+    immediate_notification: true
+    snapshot_required: true
+    
+  low:
+    immediate_notification: false
+    snapshot_required: false
